@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #1e1e2f;
+            color: #fff;
+        }
+
+        .game-container {
+            text-align: center;
+            width: 400px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #333;
+            border: 2px solid #555;
+            font-size: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            border-radius: 10px;
+        }
+
+        .cell:hover {
+            background-color: #444;
+            transform: scale(1.1);
+        }
+
+        .cell.X {
+            color: #f44336;
+        }
+
+        .cell.O {
+            color: #2196F3;
+        }
+
+        .cell.winning {
+            background-color: #ffeb3b;
+            animation: blink 0.5s alternate infinite;
+        }
+
+        @keyframes blink {
+            from {
+                background-color: #ffeb3b;
+            }
+            to {
+                background-color: #fff8d3;
+            }
+        }
+
+        .status {
+            font-size: 1.5rem;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .status span {
+            font-size: 1.8rem;
+            color: #0dcaf0;
+            animation: flicker 0.8s alternate infinite;
+        }
+
+        @keyframes flicker {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0.5;
+            }
+        }
+
+        .leaderboard {
+            margin-top: 20px;
+            text-align: left;
+            padding: 10px;
+            background-color: #282c34;
+            border-radius: 8px;
+        }
+
+        .leaderboard h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #ffcc00;
+        }
+
+        .leaderboard ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .leaderboard li {
+            font-size: 1.2rem;
+            margin: 5px 0;
+        }
+
+        .reset-btn {
+            margin-top: 20px;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .reset-btn:hover {
+            background-color: #45a049;
+        }
+
+        .reset-leaderboard-btn {
+            margin-top: 10px;
+            padding: 10px 18px;
+            font-size: 1rem;
+            background-color: #e53935;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .reset-leaderboard-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .winner {
+            color: green;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .draw {
+            color: #999;
+            font-size: 1.2rem;
+        }
+
+        .fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .firework {
+            position: absolute;
+            background-color: transparent;
+            border-radius: 50%;
+            animation: explode 1.5s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% {
+                width: 5px;
+                height: 5px;
+                opacity: 1;
+            }
+            100% {
+                width: 100px;
+                height: 100px;
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>Tic-Tac-Toe</h1>
+    <div class="status">
+        <span id="turnMessage">Player 1's Turn (X)</span>
+    </div>
+    <div class="game-board" id="gameBoard"></div>
+    <button class="reset-btn" onclick="resetGame()">Reset Game</button>
+    <button class="reset-leaderboard-btn" onclick="resetLeaderboard()">Reset Leaderboard</button>
+
+    <div class="leaderboard">
+        <h2>Leaderboard</h2>
+        <ul id="leaderboardList"></ul>
+    </div>
+</div>
+
+<div class="fireworks" id="fireworks"></div>
+
+<script>
+    const board = ["", "", "", "", "", "", "", "", ""];
+    let currentPlayer = "X";
+    let gameActive = true;
+    const scores = { X: 0, O: 0 };
+
+    const gameBoardElement = document.getElementById('gameBoard');
+    const turnMessageElement = document.getElementById('turnMessage');
+    const leaderboardList = document.getElementById('leaderboardList');
+    const fireworksContainer = document.getElementById('fireworks');
+
+    for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.setAttribute('data-index', i);
+        cell.addEventListener('click', handleCellClick);
+        gameBoardElement.appendChild(cell);
+    }
+
+    function handleCellClick(event) {
+        const index = event.target.getAttribute('data-index');
+        if (board[index] !== "" || !gameActive) return;
+
+        board[index] = currentPlayer;
+        event.target.textContent = currentPlayer;
+        event.target.classList.add(currentPlayer);
+
+        const winningPattern = checkWinner();
+        if (winningPattern) {
+            highlightWinningCells(winningPattern);
+            scores[currentPlayer]++;
+            updateLeaderboard();
+            showFireworks();
+            document.querySelector('.status').innerHTML = `<span class="winner">Player ${currentPlayer === 'X' ? '1' : '2'} Wins!</span>`;
+            gameActive = false;
+        } else if (board.every(cell => cell !== "")) {
+            document.querySelector('.status').innerHTML = `<span class="draw">It's a Draw!</span>`;
+            gameActive = false;
+        } else {
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            turnMessageElement.textContent = `Player ${currentPlayer === 'X' ? '1' : '2'}'s Turn (${currentPlayer})`;
+        }
+    }
+
+    function checkWinner() {
+        const winPatterns = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6],
+        ];
+
+        for (let pattern of winPatterns) {
+            const [a, b, c] = pattern;
+            if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                return pattern;
+            }
+        }
+        return null;
+    }
+
+    function highlightWinningCells(pattern) {
+        pattern.forEach(index => {
+            const cell = document.querySelector(`.cell[data-index="${index}"]`);
+            cell.classList.add('winning');
+        });
+    }
+
+    function updateLeaderboard() {
+        leaderboardList.innerHTML = `
+            <li>Player 1 (X): ${scores.X}</li>
+            <li>Player 2 (O): ${scores.O}</li>
+        `;
+    }
+
+    function resetGame() {
+        board.fill("");
+        gameActive = true;
+        currentPlayer = "X";
+        turnMessageElement.textContent = "Player 1's Turn (X)";
+
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            cell.textContent = "";
+            cell.classList.remove("X", "O", "winning");
+        });
+
+        document.querySelector('.status').innerHTML = "";
+    }
+
+    function resetLeaderboard() {
+        scores.X = 0;
+        scores.O = 0;
+        updateLeaderboard();
+    }
+
+    function showFireworks() {
+        for (let i = 0; i < 10; i++) {
+            const firework = document.createElement('div');
+            firework.classList.add('firework');
+            firework.style.left = `${Math.random() * 100}%`;
+            firework.style.top = `${Math.random() * 100}%`;
+            firework.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            fireworksContainer.appendChild(firework);
+
+            setTimeout(() => {
+                firework.remove();
+            }, 1500);
+        }
+    }
+
+    updateLeaderboard();
+</script>
+
+</body>
+</html>
